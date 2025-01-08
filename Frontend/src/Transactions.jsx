@@ -7,6 +7,7 @@ const Transactions = ({ month }) => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [error, setError] = useState(null); // State for handling errors
   const perPage = 10;
 
   // Effect to fetch transactions whenever search, month, or page changes
@@ -15,28 +16,31 @@ const Transactions = ({ month }) => {
   }, [month, page, search]);
 
   // Function to fetch transactions based on filters
-  const fetchTransactions = () => {
-    axios
-      .get("http://localhost:5000/api/transactions", {
+  const fetchTransactions = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/transactions", {
         params: { month, page, perPage, search },
-      })
-      .then((res) => {
-        setTransactions(res.data.transactions);
-        setTotal(res.data.total);
-      })
-      .catch((err) => console.error("Error fetching transactions:", err));
+      });
+      setTransactions(res.data.transactions);
+      setTotal(res.data.total);
+      setError(null); // Reset error state on successful fetch
+    } catch (err) {
+      console.error("Error fetching transactions:", err);
+      setError("Error fetching transactions. Please try again later."); // Set error message
+    }
   };
 
   // Handle changes in the search input
   const handleSearchChange = (e) => {
     setSearch(e.target.value); // Update the search state as user types
+    setPage(1); // Reset to first page on search
   };
 
   // Calculate total pages
   const totalPages = Math.ceil(total / perPage);
 
   return (
-    <div className="container mt-4 ">
+    <div className="container mt-4">
       <h2 className="mb-3 text-center">Transactions</h2>
       {/* Search Bar */}
       <div className="mb-3">
@@ -48,6 +52,9 @@ const Transactions = ({ month }) => {
           onChange={handleSearchChange} // Trigger fetch on input change
         />
       </div>
+
+      {/* Error Message */}
+      {error && <div className="alert alert-danger">{error}</div>}
 
       {/* Transactions Table */}
       <div className="table-responsive">
@@ -89,7 +96,7 @@ const Transactions = ({ month }) => {
       <div className="d-flex justify-content-between align-items-center">
         <button
           className="btn btn-primary"
-          onClick={() => setPage(page - 1)}
+          onClick={() => setPage((prev) => Math.max(prev - 1, 1))} // Prevent going below page 1
           disabled={page === 1}
         >
           Previous
@@ -99,8 +106,8 @@ const Transactions = ({ month }) => {
         </span>
         <button
           className="btn btn-primary"
-          onClick={() => setPage(page + 1)}
-          disabled={page === totalPages}
+          onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))} // Prevent going above total pages
+          disabled={page === totalPages || totalPages === 0}
         >
           Next
         </button>
